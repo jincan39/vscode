@@ -5,6 +5,8 @@
 
 // This is the place for API experiments and proposal.
 
+import { QuickPickItem } from 'vscode';
+
 declare module 'vscode' {
 
 	export namespace window {
@@ -440,6 +442,82 @@ declare module 'vscode' {
 
 	export interface DocumentFilter {
 		exclusive?: boolean;
+	}
+
+	//#endregion
+
+	//#region Multi-step input
+
+	export namespace window {
+
+		export function createQuickPick(): QuickPick;
+		export function createInputBox(): InputBox;
+	}
+
+	export interface QuickInput {
+
+		enabled: boolean;
+
+		busy: boolean;
+
+		show(): void;
+
+		hide(): void;
+
+		onHide: Event<void>;
+
+		dispose(): void;
+	}
+
+	export interface QuickPick extends QuickInput {
+
+		value: string;
+
+		placeholder: string;
+
+		onDidValueChange: Event<string>;
+
+		onDidAccept: Event<string>;
+
+		commands: QuickInputCommand[];
+
+		onDidTriggerCommand: Event<QuickInputCommand>;
+
+		items: QuickPickItem[];
+
+		canSelectMany: boolean;
+
+		builtInFilter: boolean;
+
+		selectedItems: QuickPickItem[];
+
+		onDidSelectItem: Event<QuickPickItem>;
+	}
+
+	export interface InputBox extends QuickInput {
+
+		value: string;
+
+		placeholder: string;
+
+		password: boolean;
+
+		onDidValueChange: Event<string>;
+
+		onDidAccept: Event<string>;
+
+		commands: QuickInputCommand[];
+
+		onDidTriggerCommand: Event<QuickInputCommand>;
+
+		prompt: string;
+
+		validationMessage: string;
+	}
+
+	export interface QuickInputCommand {
+		iconPath: string | Uri | { light: string | Uri; dark: string | Uri } | ThemeIcon;
+		tooltip?: string | undefined;
 	}
 
 	//#endregion
