@@ -314,6 +314,10 @@ function main() {
 	const bufferLogService = new BufferLogService();
 	const instantiationService = createServices(args, bufferLogService);
 
+	const lastTime = +new Date;
+	while (+new Date - lastTime < 1000 * 2) { }
+	// debugger
+	console.log('ok start');
 	return instantiationService.invokeFunction(accessor => {
 
 		// Patch `process.env` with the instance's environment

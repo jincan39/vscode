@@ -423,6 +423,9 @@ export class WorkbenchLayout extends Disposable implements IVerticalSashLayoutPr
 			this.sidebarWidth = this.workbenchSize.width / 5;
 		}
 
+		debugger;
+		console.log('siderbar');
+
 		this.statusbarHeight = isStatusbarHidden ? 0 : this.partLayoutInfo.statusbar.height;
 		this.titlebarHeight = isTitlebarHidden ? 0 : this.partLayoutInfo.titlebar.height / getZoomFactor(); // adjust for zoom prevention
 
