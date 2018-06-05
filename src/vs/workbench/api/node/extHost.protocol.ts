@@ -339,12 +339,68 @@ export interface MainThreadTerminalServiceShape extends IDisposable {
 export interface MyQuickPickItems extends IPickOpenEntry {
 	handle: number;
 }
+
+export type TransferQuickInput = TransferQuickPick | TransferInputBox;
+
+export interface BaseTransferQuickInput {
+
+	id: number;
+
+	type?: 'quickPick' | 'inputBox';
+
+	enabled?: boolean;
+
+	busy?: boolean;
+
+	visible?: boolean;
+}
+
+export interface TransferQuickPick extends BaseTransferQuickInput {
+
+	type?: 'quickPick';
+
+	value?: string;
+
+	placeholder?: string;
+
+	commands?: TransferQuickInputCommand[];
+
+	items?: MyQuickPickItems[];
+
+	canSelectMany?: boolean;
+
+	builtInFilter?: boolean;
+}
+
+export interface TransferInputBox extends BaseTransferQuickInput {
+
+	type?: 'inputBox';
+
+	value?: string;
+
+	placeholder?: string;
+
+	password?: boolean;
+
+	commands?: TransferQuickInputCommand[];
+
+	prompt?: string;
+
+	validationMessage?: string;
+}
+
+export interface TransferQuickInputCommand {
+	iconPath: { light: string; dark: string; };
+	tooltip?: string | undefined;
+}
+
 export interface MainThreadQuickOpenShape extends IDisposable {
-	$show(multiStepHandle: number | undefined, options: IPickOptions): TPromise<number | number[]>;
+	$show(options: IPickOptions): TPromise<number | number[]>;
 	$setItems(items: MyQuickPickItems[]): TPromise<any>;
 	$setError(error: Error): TPromise<any>;
-	$input(multiStepHandle: number | undefined, options: vscode.InputBoxOptions, validateInput: boolean): TPromise<string>;
-	$multiStep(handle: number): TPromise<never>;
+	$input(options: vscode.InputBoxOptions, validateInput: boolean): TPromise<string>;
+	$createOrUpdate(params: TransferQuickInput): TPromise<void>;
+	$dispose(id: number): TPromise<void>;
 }
 
 export interface MainThreadStatusBarShape extends IDisposable {
@@ -758,6 +814,7 @@ export interface ExtHostLanguageFeaturesShape {
 export interface ExtHostQuickOpenShape {
 	$onItemSelected(handle: number): void;
 	$validateInput(input: string): TPromise<string>;
+	$onDidSelectItems(sessionId: number, handles: number[]): void;
 }
 
 export interface ShellLaunchConfigDto {

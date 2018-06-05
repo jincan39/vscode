@@ -84,7 +84,50 @@ export interface IInputOptions {
 	validateInput?: (input: string) => TPromise<string>;
 }
 
-export interface IQuickInput {
+export type InputParameters = PickOneParameters | PickManyParameters | TextInputParameters;
+
+export type InputResult<P extends InputParameters> =
+	P extends PickOneParameters<infer T> ? T :
+	P extends PickManyParameters<infer T> ? T[] :
+	P extends TextInputParameters ? string :
+	never;
+
+export interface BaseInputParameters {
+	readonly type: 'pickOne' | 'pickMany' | 'textInput';
+	readonly ignoreFocusLost?: boolean;
+}
+
+export interface PickParameters<T extends IPickOpenEntry = IPickOpenEntry> extends BaseInputParameters {
+	readonly type: 'pickOne' | 'pickMany';
+	readonly picks: TPromise<T[]>;
+	readonly matchOnDescription?: boolean;
+	readonly matchOnDetail?: boolean;
+	readonly placeHolder?: string;
+}
+
+export interface PickOneParameters<T extends IPickOpenEntry = IPickOpenEntry> extends PickParameters<T> {
+	readonly type: 'pickOne';
+}
+
+export interface PickManyParameters<T extends IPickOpenEntry = IPickOpenEntry> extends PickParameters<T> {
+	readonly type: 'pickMany';
+}
+
+export interface TextInputParameters extends BaseInputParameters {
+	readonly type: 'textInput';
+	readonly value?: string;
+	readonly valueSelection?: [number, number];
+	readonly prompt?: string;
+	readonly placeHolder?: string;
+	readonly password?: boolean;
+	readonly validateInput?: (input: string) => TPromise<string>;
+}
+
+export const IQuickInputService = createDecorator<IQuickInputService>('quickInputService');
+
+export interface IQuickInputService {
+
+	_serviceBrand: any;
 
 	/**
 	 * Opens the quick input box for selecting items and returns a promise with the user selected item(s) if any.
@@ -95,15 +138,8 @@ export interface IQuickInput {
 	 * Opens the quick input box for text input and returns a promise with the user typed value if any.
 	 */
 	input(options?: IInputOptions, token?: CancellationToken): TPromise<string>;
-}
 
-export const IQuickInputService = createDecorator<IQuickInputService>('quickInputService');
-
-export interface IQuickInputService extends IQuickInput {
-
-	_serviceBrand: any;
-
-	multiStepInput<T>(handler: (input: IQuickInput, token: CancellationToken) => Thenable<T>, token?: CancellationToken): Thenable<T>;
+	show<P extends InputParameters>(parameters: P, token?: CancellationToken): TPromise<InputResult<P>>;
 
 	focus(): void;
 

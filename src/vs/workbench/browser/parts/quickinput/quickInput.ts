@@ -7,7 +7,7 @@
 
 import 'vs/css!./quickInput';
 import { Component } from 'vs/workbench/common/component';
-import { IQuickInputService, IPickOpenEntry, IPickOptions, IInputOptions, IQuickNavigateConfiguration, IQuickInput } from 'vs/platform/quickinput/common/quickInput';
+import { IQuickInputService, IPickOpenEntry, IPickOptions, IInputOptions, IQuickNavigateConfiguration, PickOneParameters, PickManyParameters, TextInputParameters, InputResult, InputParameters } from 'vs/platform/quickinput/common/quickInput';
 import { IPartService } from 'vs/workbench/services/part/common/partService';
 import * as dom from 'vs/base/browser/dom';
 import { IInstantiationService } from 'vs/platform/instantiation/common/instantiation';
@@ -16,7 +16,7 @@ import { contrastBorder, widgetShadow } from 'vs/platform/theme/common/colorRegi
 import { SIDE_BAR_BACKGROUND, SIDE_BAR_FOREGROUND } from 'vs/workbench/common/theme';
 import { IQuickOpenService } from 'vs/platform/quickOpen/common/quickOpen';
 import { TPromise } from 'vs/base/common/winjs.base';
-import { CancellationToken, CancellationTokenSource } from 'vs/base/common/cancellation';
+import { CancellationToken } from 'vs/base/common/cancellation';
 import { QuickInputList } from './quickInputList';
 import { QuickInputBox } from './quickInputBox';
 import { KeyCode } from 'vs/base/common/keyCodes';
@@ -39,39 +39,6 @@ import { ICommandAndKeybindingRule, KeybindingsRegistry } from 'vs/platform/keyb
 import { inQuickOpenContext } from 'vs/workbench/browser/parts/quickopen/quickopen';
 
 const $ = dom.$;
-
-type InputParameters = PickOneParameters | PickManyParameters | TextInputParameters;
-
-export interface BaseInputParameters {
-	readonly type: 'pickOne' | 'pickMany' | 'textInput';
-	readonly ignoreFocusLost?: boolean;
-}
-
-export interface PickParameters<T extends IPickOpenEntry = IPickOpenEntry> extends BaseInputParameters {
-	readonly type: 'pickOne' | 'pickMany';
-	readonly picks: TPromise<T[]>;
-	readonly matchOnDescription?: boolean;
-	readonly matchOnDetail?: boolean;
-	readonly placeHolder?: string;
-}
-
-export interface PickOneParameters<T extends IPickOpenEntry = IPickOpenEntry> extends PickParameters<T> {
-	readonly type: 'pickOne';
-}
-
-export interface PickManyParameters<T extends IPickOpenEntry = IPickOpenEntry> extends PickParameters<T> {
-	readonly type: 'pickMany';
-}
-
-export interface TextInputParameters extends BaseInputParameters {
-	readonly type: 'textInput';
-	readonly value?: string;
-	readonly valueSelection?: [number, number];
-	readonly prompt?: string;
-	readonly placeHolder?: string;
-	readonly password?: boolean;
-	readonly validateInput?: (input: string) => TPromise<string>;
-}
 
 interface QuickInputUI {
 	container: HTMLElement;
@@ -362,7 +329,6 @@ export class QuickInputService extends Component implements IQuickInputService {
 	private inQuickOpenContext: IContextKey<boolean>;
 
 	private controller: InputController<any>;
-	private multiStepHandle: CancellationTokenSource;
 
 	constructor(
 		@IEnvironmentService private environmentService: IEnvironmentService,
@@ -551,11 +517,7 @@ export class QuickInputService extends Component implements IQuickInputService {
 	}
 
 	pick<T extends IPickOpenEntry, O extends IPickOptions>(picks: TPromise<T[]>, options: O = <O>{}, token?: CancellationToken): TPromise<O extends { canPickMany: true } ? T[] : T> {
-		return this._pick(undefined, picks, options, token);
-	}
-
-	private _pick<T extends IPickOpenEntry, O extends IPickOptions>(handle: CancellationTokenSource | undefined, picks: TPromise<T[]>, options: O = <O>{}, token?: CancellationToken): TPromise<O extends { canPickMany: true } ? T[] : T> {
-		return <any>this._show(handle, <any>{
+		return <any>this.show(<any>{
 			type: options.canPickMany ? 'pickMany' : 'pickOne',
 			picks,
 			placeHolder: options.placeHolder,
@@ -566,11 +528,7 @@ export class QuickInputService extends Component implements IQuickInputService {
 	}
 
 	input(options: IInputOptions = {}, token?: CancellationToken): TPromise<string> {
-		return this._input(undefined, options, token);
-	}
-
-	private _input(handle: CancellationTokenSource | undefined, options: IInputOptions = {}, token?: CancellationToken): TPromise<string> {
-		return this._show(handle, {
+		return this.show({
 			type: 'textInput',
 			value: options.value,
 			valueSelection: options.valueSelection,
@@ -582,17 +540,7 @@ export class QuickInputService extends Component implements IQuickInputService {
 		}, token);
 	}
 
-	private _show<T extends IPickOpenEntry, P extends PickOneParameters<T> | PickManyParameters<T>>(multiStepHandle: CancellationTokenSource | undefined, parameters: P, token?: CancellationToken): TPromise<P extends PickManyParameters<T> ? T[] : T>;
-	private _show(multiStepHandle: CancellationTokenSource | undefined, parameters: TextInputParameters, token?: CancellationToken): TPromise<string>;
-	private _show<R>(multiStepHandle: CancellationTokenSource | undefined, parameters: InputParameters, token: CancellationToken = CancellationToken.None): TPromise<R> {
-		if (multiStepHandle && multiStepHandle !== this.multiStepHandle) {
-			multiStepHandle.cancel();
-			return TPromise.as(undefined);
-		}
-		if (!multiStepHandle && this.multiStepHandle) {
-			this.multiStepHandle.cancel();
-		}
-
+	show<P extends InputParameters>(parameters: P, token: CancellationToken = CancellationToken.None): TPromise<InputResult<P>> {
 		this.create();
 		this.quickOpenService.close();
 		if (this.controller) {
@@ -658,17 +606,6 @@ export class QuickInputService extends Component implements IQuickInputService {
 				throw new Error(`Unknown input type: ${(<any>p).type}`);
 			})(parameters);
 		}
-	}
-
-	multiStepInput<T>(handler: (input: IQuickInput, token: CancellationToken) => Thenable<T>, token = CancellationToken.None): Thenable<T> {
-		if (this.multiStepHandle) {
-			this.multiStepHandle.cancel();
-		}
-		this.multiStepHandle = new CancellationTokenSource();
-		return TPromise.wrap(handler({
-			pick: this._pick.bind(this, this.multiStepHandle),
-			input: this._input.bind(this, this.multiStepHandle)
-		}, this.multiStepHandle.token));
 	}
 
 	focus() {
