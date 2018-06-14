@@ -14,5 +14,5 @@ out-vscode-min/
 build/node_modules
 coverage/
 test_data/
-test-results/
 yarn-error.log
+.idea
